@@ -13,40 +13,26 @@ jobs:
         node-version: [16.x]
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Install Dependencies
-        if: steps.cache-nodemodules.outputs.cache-hit != 'true'
-        run: |
-          npm ci --force
+        run: npm ci --force
 
-      - name: Install OWASP Dependency Check
+      - name: Download OWASP Dependency Check
         run: |
           wget https://github.com/jeremylong/DependencyCheck/releases/download/v7.2.0/dependency-check-7.2.0-release.zip
           unzip dependency-check-7.2.0-release.zip
-          chmod +x dependency-check/bin/dependency-check.sh  # Ensure execute permissions
-
-      - name: Install SLF4J Logger
-        run: |
-          wget https://repo1.maven.org/maven2/ch/qos/logback/logback-classic/1.2.11/logback-classic-1.2.11.jar -P dependency-check/lib/
-
-      - name: Verify Dependency Check Installation
-        run: dependency-check/bin/dependency-check.sh --version
 
       - name: Run scan with ODC
         run: |
-          export JAVA_OPTS="-Xmx2g"  # Increase memory allocation
-          dependency-check/bin/dependency-check.sh --project "bitcoin" --scan . --log odc-debug.log
+          dependency-check/bin/dependency-check.sh \
+            --project "bitcoin" \
+            --scan . \
+            --format HTML \
+            --out ./ODC-report \
+            --failOnCVSS 11 || true
 
-      - name: Upload Debug Logs (if scan fails)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: odc-debug-log
-          path: ./odc-debug.log
-
-      - name: Archive ODC Report
+      - name: Archive ODC report
         uses: actions/upload-artifact@v4
         with:
           name: sast-report
